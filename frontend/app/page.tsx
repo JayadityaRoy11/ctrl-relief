@@ -1092,7 +1092,7 @@ export default function HomePage() {
     try {
       await new Promise((resolve) => setTimeout(resolve, 1200));
 
-      const res = await fetch("https://ctrl-relief-backend-1091620591190.asia-south1.run.app/match", {
+      const res = await fetch("https://ctrl-relief-backend-1091620591190.asia-south1.run.app/api/match/leagacy", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

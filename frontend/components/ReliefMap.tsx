@@ -7,12 +7,14 @@ import {
   Popup,
   Polyline,
   Circle,
+  useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet.heat";
 import L from "leaflet";
 import { useEffect, useState } from "react";
 
-// 🔥 Icons
+// 🔥 ICONS
 const createIcon = (color: string) =>
   new L.Icon({
     iconUrl: `https://maps.google.com/mapfiles/ms/icons/${color}-dot.png`,
@@ -25,6 +27,41 @@ const icons = {
   low: createIcon("green"),
   user: createIcon("blue"),
 };
+
+// 📍 DISTANCE FUNCTION
+const getDistance = (a: number, b: number, c: number, d: number) => {
+  const R = 6371;
+  const dLat = ((c - a) * Math.PI) / 180;
+  const dLon = ((d - b) * Math.PI) / 180;
+
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((a * Math.PI) / 180) *
+      Math.cos((c * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+
+  return (R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))).toFixed(2);
+};
+
+// 🔥 HEATMAP LAYER
+function HeatmapLayer({ points }: { points: [number, number][] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!points.length) return;
+
+    const heat = (L as any).heatLayer(points, {
+      radius: 25,
+      blur: 15,
+    }).addTo(map);
+
+    return () => {
+      map.removeLayer(heat);
+    };
+  }, [points, map]);
+
+  return null;
+}
 
 export type ReliefMapMarker = {
   id: string;
@@ -41,27 +78,14 @@ type Props = {
   height?: string;
 };
 
-const getDistance = (a: number, b: number, c: number, d: number) => {
-  const R = 6371;
-  const dLat = ((c - a) * Math.PI) / 180;
-  const dLon = ((d - b) * Math.PI) / 180;
-
-  const x =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((a * Math.PI) / 180) *
-      Math.cos((c * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-
-  return (R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))).toFixed(2);
-};
-
 export default function ReliefMap({ markers = [], height = "450px" }: Props) {
   const [user, setUser] = useState<[number, number] | null>(null);
   const [movingMarker, setMovingMarker] = useState<[number, number] | null>(
     null
   );
+  const [liveStatus, setLiveStatus] = useState("Assigning...");
 
-  // 📍 Get user location
+  // 📍 GET USER LOCATION
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -76,7 +100,7 @@ export default function ReliefMap({ markers = [], height = "450px" }: Props) {
     );
   }, []);
 
-  // 🚗 Fake movement animation (VOLUNTEER EN ROUTE)
+  // 🚗 FAKE MOVEMENT
   useEffect(() => {
     if (!user || markers.length === 0) return;
 
@@ -100,6 +124,25 @@ export default function ReliefMap({ markers = [], height = "450px" }: Props) {
     return () => clearInterval(interval);
   }, [user, markers]);
 
+  // 📡 LIVE STATUS SIMULATION
+  useEffect(() => {
+    const steps = [
+      "Assigning...",
+      "Volunteer accepted",
+      "En route 🚗",
+      "Reached 📍",
+    ];
+    let i = 0;
+
+    const interval = setInterval(() => {
+      setLiveStatus(steps[i]);
+      i++;
+      if (i >= steps.length) clearInterval(interval);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   if (!user) return null;
 
   return (
@@ -107,12 +150,15 @@ export default function ReliefMap({ markers = [], height = "450px" }: Props) {
       <MapContainer center={user} zoom={12} style={{ height: "100%" }}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-        {/* 🔵 USER LOCATION */}
+        {/* 🔥 HEATMAP */}
+        <HeatmapLayer points={markers.map((m) => [m.lat, m.lng])} />
+
+        {/* 🔵 USER */}
         <Marker position={user} icon={icons.user}>
           <Popup>You are here</Popup>
         </Marker>
 
-        {/* 🔵 Radius */}
+        {/* 🔵 RANGE */}
         <Circle center={user} radius={2000} pathOptions={{ color: "blue" }} />
 
         {/* 🚨 MARKERS */}
@@ -137,6 +183,14 @@ export default function ReliefMap({ markers = [], height = "450px" }: Props) {
                   📍 {dist} km away
                   <br />
                   🚨 {m.urgency}
+
+                  <div className="mt-2 text-xs bg-gray-100 p-2 rounded">
+                    🤖 AI Match: {(Math.random() * 30 + 70).toFixed(0)}%
+                    <br />
+                    ⏱ ETA: {(Number(dist) / 40 * 60).toFixed(0)} mins
+                    <br />
+                    ⭐ Rating: {(Math.random() * 1 + 4).toFixed(1)}
+                  </div>
                 </div>
               </Popup>
             </Marker>
@@ -150,7 +204,6 @@ export default function ReliefMap({ markers = [], height = "450px" }: Props) {
               <Popup>Volunteer en route 🚗</Popup>
             </Marker>
 
-            {/* 🧭 ROUTE LINE */}
             <Polyline positions={[user, [markers[0].lat, markers[0].lng]]} />
           </>
         )}
@@ -164,12 +217,22 @@ export default function ReliefMap({ markers = [], height = "450px" }: Props) {
         <div>🔵 You / Volunteer</div>
       </div>
 
-      {/* 🔥 LIVE ACTIVITY FEED */}
-      <div className="absolute top-3 right-3 bg-white p-2 rounded shadow text-xs w-48">
-        <div className="font-semibold mb-1">Live Activity</div>
-        <div>✅ Volunteer assigned</div>
-        <div>🚗 En route</div>
-        <div>📍 Reached nearby</div>
+      {/* 📡 LIVE STATUS */}
+      <div className="absolute top-3 right-3 bg-white p-2 rounded shadow text-xs">
+        {liveStatus}
+      </div>
+
+      {/* 🎯 CONTROL PANEL */}
+      <div className="absolute bottom-3 right-3 bg-white p-3 rounded shadow w-64 text-xs">
+        <div className="font-semibold mb-2">Mission Control</div>
+
+        <div>📍 Location: Emergency Zone</div>
+        <div>🚨 Urgency: High</div>
+        <div>👥 Volunteers: 2 Assigned</div>
+
+        <button className="mt-2 w-full bg-blue-600 text-white py-1 rounded">
+          Mark as Completed
+        </button>
       </div>
     </div>
   );

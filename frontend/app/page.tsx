@@ -33,7 +33,7 @@ import {
   Wrench,
   Zap
 } from "lucide-react";
-import type { ReliefMapMarker } from "@/components/ReliefMap";
+import type { ReliefMapMarker } from "../components/ReliefMap";
 
 type NeedType = "Food" | "Medical" | "Education";
 type Urgency = "High" | "Medium" | "Low";
@@ -85,7 +85,7 @@ type MatchApiResponse =
   | { matches?: Volunteer[] | Record<string, unknown>[] }
   | { volunteers?: Volunteer[] | Record<string, unknown>[] };
 
-const ReliefMap = dynamic(() => import("@/components/ReliefMap"), { ssr: false });
+const ReliefMap = dynamic(() => import("../components/ReliefMap"), { ssr: false });
 
 const PRELOADED_VOLUNTEERS: Volunteer[] = [
   {

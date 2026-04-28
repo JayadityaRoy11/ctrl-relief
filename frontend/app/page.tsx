@@ -430,8 +430,79 @@ function TaskDetailModal({
   const ratingValues = Object.values(volunteerRatings);
   const avgRating = ratingValues.length > 0 ? ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length : null;
   const [activities, setActivities] = useState<ActivityEntry[]>([]);
-  const [messages] = useState<ChatMessage[]>(generateMockMessages(role));
+  const [messages, setMessages] = useState<ChatMessage[]>(generateMockMessages(role));
   const [newMessage, setNewMessage] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+
+  // Handle sending messages
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
+    
+    setIsSendingMessage(true);
+    
+    // Create new message object
+    const newChatMessage: ChatMessage = {
+      id: Date.now().toString(),
+      sender: role,
+      message: newMessage.trim(),
+      timestamp: 'Just now'
+    };
+    
+    // Update UI instantly
+    setMessages(prev => [...prev, newChatMessage]);
+    
+    // Clear input
+    const messageToSend = newMessage.trim();
+    setNewMessage('');
+    
+    try {
+      // Send to backend (using production API URL)
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ctrl-relief-backend-1091620591190.asia-south1.run.app';
+      
+      // Try to send to chat endpoint, fall back to mock if it fails
+      try {
+        const response = await fetch(`${apiUrl}/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: messageToSend,
+            sender: role,
+            requestId: request.id,
+            timestamp: new Date().toISOString()
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // Message sent successfully
+        console.log('Message sent to backend successfully');
+        
+      } catch (apiError) {
+        // Chat endpoint not available, simulate mock response
+        setTimeout(() => {
+          const mockResponse: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            sender: role === 'ngo' ? 'volunteer' : 'ngo',
+            message: role === 'ngo' 
+              ? 'Received! I\'m on my way to help.' 
+              : 'Message received. Will update you on progress.',
+            timestamp: 'Just now'
+          };
+          setMessages(prev => [...prev, mockResponse]);
+        }, 1500);
+      }
+      
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Still keep the message in UI even if API fails
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
 
   // Simulate activity feed updates
   useEffect(() => {
@@ -677,14 +748,31 @@ function TaskDetailModal({
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
                   placeholder="Type a message..."
                   className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                  disabled={isSendingMessage}
                 />
                 <button
                   type="button"
-                  className="interactive-btn rounded-lg bg-blue-600 px-3 py-2 text-white transition hover:bg-blue-500"
+                  onClick={handleSendMessage}
+                  disabled={isSendingMessage || !newMessage.trim()}
+                  className={`interactive-btn rounded-lg px-3 py-2 text-white transition ${
+                    isSendingMessage || !newMessage.trim()
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-blue-600 hover:bg-blue-500'
+                  }`}
                 >
-                  <Send className="h-4 w-4" />
+                  {isSendingMessage ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>

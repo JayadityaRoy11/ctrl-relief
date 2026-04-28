@@ -76,9 +76,16 @@ export type ReliefMapMarker = {
 type Props = {
   markers?: ReliefMapMarker[];
   height?: string;
+  title?: string;
+  showLegend?: boolean;
 };
 
-export default function ReliefMap({ markers = [], height = "450px" }: Props) {
+export default function ReliefMap({
+  markers = [],
+  height = "450px",
+  title = "",
+  showLegend = true,
+}: Props) {
   const [user, setUser] = useState<[number, number] | null>(null);
   const [movingMarker, setMovingMarker] = useState<[number, number] | null>(
     null
@@ -147,6 +154,11 @@ export default function ReliefMap({ markers = [], height = "450px" }: Props) {
 
   return (
     <div style={{ height }} className="rounded-lg overflow-hidden border relative">
+      {title && (
+        <div className="absolute top-3 left-3 bg-white px-3 py-1 rounded shadow text-sm font-semibold">
+          {title}
+        </div>
+      )}
       <MapContainer center={user} zoom={12} style={{ height: "100%" }}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 

@@ -1004,7 +1004,7 @@ export default function HomePage() {
     try {
       await new Promise((resolve) => setTimeout(resolve, 1200));
 
-      const res = await fetch("http://127.0.0.1:8000/match", {
+      const res = await fetch("https://ctrl-relief-backend-1091620591190.asia-south1.run.app/match", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -1066,7 +1066,7 @@ export default function HomePage() {
     } catch (err) {
       console.error("Error:", err);
       setError(
-        "Could not fetch matches from backend. Make sure http://127.0.0.1:8000 is running."
+        "Could not fetch matches from backend. Please try again later."
       );
       setResults([]);
     } finally {
